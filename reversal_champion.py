@@ -11,17 +11,17 @@ warnings.filterwarnings('ignore')
 # ═══════════════════════════════════════════════════════════
 # 数据源配置
 # ═══════════════════════════════════════════════════════════
-DATA_SOURCE = 'backtest_data'  # 'trading' 或 'backtest_data'
+DATA_SOURCE = 'trading'  # 'trading' 或 'backtest_data'
 # 自定义时间范围
-CUSTOM_START = None
-CUSTOM_END   = None
+CUSTOM_START = '2026-03-29'
+CUSTOM_END   = '2026-06-22'
 # ═══════════════════════════════════════════════════════════
 
 CFG = json.load(open('scripts/backtest/reversal_config.json'))
 ST = CFG['signal_thresholds']; SW = CFG['signal_weights']
 
 LA = 500; INIT = 3; ADD_SZ = 3; MAX_ADD = 1; LEV = 5; CM = 0.1; MH = 500; MP = 1
-SL_N = -10.0; SL_AFTER_TP1 = -10.0; SL_TIGHT = -10.0
+SL_N = -8.0; SL_AFTER_TP1 = -8.0; SL_TIGHT = -8.0
 TP1_N = 6.0; TP2_N = 6.0; TP1_W = 6.0; TP2_W = 6.0
 ADD_T = [1.0]
 ADD_ONLY_REVERSAL = True  # 仅反手仓可加仓，信号仓不加
