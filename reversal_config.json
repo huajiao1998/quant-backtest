@@ -1,0 +1,12 @@
+{
+  "signal_weights": {
+    "ma_trend": 3,
+    "macd": 1,
+    "rsi_extreme": 0,
+    "bollinger": 0
+  },
+  "signal_thresholds": {
+    "rsi_oversold": 30,
+    "rsi_overbought": 70
+  }
+}
