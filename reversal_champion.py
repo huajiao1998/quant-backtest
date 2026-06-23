@@ -24,6 +24,7 @@ LA = 500; INIT = 3; ADD_SZ = 3; MAX_ADD = 1; LEV = 5; CM = 0.1; MH = 500; MP = 1
 SL_N = -10.0; SL_AFTER_TP1 = -10.0; SL_TIGHT = -10.0
 TP1_N = 6.0; TP2_N = 6.0; TP1_W = 6.0; TP2_W = 6.0
 ADD_T = [1.0]
+ADD_ONLY_REVERSAL = True  # 仅反手仓可加仓，信号仓不加
 BEIJING_TZ = ZoneInfo('Asia/Shanghai')
 
 if DATA_SOURCE == 'trading':
@@ -81,10 +82,11 @@ for i in range(1,N):
     if c<l['bl']: bb+=SW['bollinger']
     theta[i]=bb; psi[i]=ss
 
-def sim(sd, idx):
+def sim(sd, idx, is_rev=False):
     ep=pr[idx]; ct=INIT; ec=ep; tot=0.0
     t1t=False; ac=0; er='timeout'; exp=None
     tight=False
+    _can_add = is_rev or not ADD_ONLY_REVERSAL  # 反手仓可加仓，或关闭限制
     for off in range(1, min(LA, len(pr)-idx)):
         cp=pr[idx+off]
         if np.isnan(cp): break
@@ -97,8 +99,8 @@ def sim(sd, idx):
         u1=TP1_W if ((sd=='s' and _c) or (sd=='l' and _b)) else TP1_N
         us=max(SL_TIGHT if tight else SL_N, SL_AFTER_TP1)
         if cur<=us: er='sl'; exp=cp; break
-        # 盈利加仓：达到1%利润时加仓一次
-        if ac<MAX_ADD and cur>=ADD_T[min(ac, len(ADD_T)-1)]:
+        # 盈利加仓（仅反手仓可加仓）
+        if _can_add and ac<MAX_ADD and cur>=ADD_T[min(ac, len(ADD_T)-1)]:
             ec=(ec*ct+cp*ADD_SZ)/(ct+ADD_SZ); ct+=ADD_SZ; ac+=1
             continue
         if not t1t and cur>=u1:
@@ -109,7 +111,7 @@ def sim(sd, idx):
     return {'pnl':round(tot,2),'win':tot>0,'er':er,'ex':idx+off,'ep':ep,'sd':sd}
 
 print('=== 止损翻转（冠军版）===')
-print(f'盈利1%加仓→6%全平 | SL={SL_N}%→反手 | MAX_ADD={MAX_ADD} | 数据源: {src_label}\n')
+print(f'盈利1%加仓→6%全平 | SL={SL_N}%→反手 | MAX_ADD={MAX_ADD} | 仅反手仓加仓={ADD_ONLY_REVERSAL} | 数据源: {src_label}\n')
 
 PERIODS = [
     ('2025-01-01','2025-06-01','1~5月 下跌'),
@@ -146,12 +148,12 @@ for st, en, lb in PERIODS:
             if wl:
                 r=sim('l',i); trades.append(r)
                 if r['er']=='sl':
-                    r2=sim('s',i); trades.append(r2); pos=r2
+                    r2=sim('s',i,is_rev=True); trades.append(r2); pos=r2
                 else: pos=r
             elif ws:
                 r=sim('s',i); trades.append(r)
                 if r['er']=='sl':
-                    r2=sim('l',i); trades.append(r2); pos=r2
+                    r2=sim('l',i,is_rev=True); trades.append(r2); pos=r2
                 else: pos=r
     ttl=sum(p['pnl'] for p in trades)
     if trades:
