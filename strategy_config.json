@@ -1,0 +1,131 @@
+{
+  "_comment": "ETH量化交易策略配置文件 - AI复盘后可直接修改此文件调整策略参数",
+  "_updated": "2026-06-18",
+  "_version": "v12.2.2",
+  "_changelog": "v12.2.2: rsi_momentum权重1→0, adx_trend权重1→0（禁用此两个信号）；v12.2.1: sl_after_tp1_pct从10改为40（TP1后放开止损不收紧）；默认atr_multiplier=0保持动态止损关闭；v12.2.0: TP1后收紧止损从20%改为10%（sl_after_tp1_pct）；修复回测脚本SL_AFTER_TP1逻辑（min→max）；新增sl_after_tp1_pct配置参数；v12.1.0: RSI/ATR计算方式从SMA平滑改为EMA平滑，匹配回测脚本final_backtest.py; signal_version sv6; v9.2.0: 新增持仓超时清理功能(max_hold_hours); v9.0.0: 加仓→补仓(亏损3%触发), TP3删除改为TP2(7%/14%PnL), SL-20%, sma200趋势过滤, ATR止损关闭, 同方向1持仓(回退多仓位)",
+  "_signal_version": "sv7",
+  "_signal_changelog": "sv7: 禁用rsi_momentum和adx_trend信号（权重归零）；保留信号rsi_extreme(2)+bollinger(2)+macd(1)+volume(1)+funding_rate(1) 共7分；sv6(6.18起): RSI/ATR改为EMA平滑，与回测脚本算法一致",
+  "_baseline": false,
+  "trade": {
+    "symbol_swap": "ETH-USDT-SWAP",
+    "leverage": 5,
+    "position_size_usdt": 100
+  },
+  "risk_control": {
+    "max_loss_per_trade_pct": 10,
+    "max_drawdown_pct": 60,
+    "max_continuous_losses": 5
+  },
+  "stop_loss": {
+    "atr_multiplier": 0,
+    "max_loss_pct": 40,
+    "tight_loss_pct": 20,
+    "sl_after_tp1_pct": 40
+  },
+  "take_profit": {
+    "tp1_pct": 5.0,
+    "tp1_ratio": 0.5,
+    "tp2_pct": 10.0,
+    "tp2_ratio": 0.5,
+    "dynamic_tp_enable": true,
+    "dynamic_tp1_pct": 7.0,
+    "dynamic_tp2_pct": 14.0
+  },
+  "position_timeout": {
+    "max_hold_hours": 500
+  },
+  "add_position": {
+    "min_confidence": 70,
+    "base_usdt": 100,
+    "high_conf_usdt": 100,
+    "mid_conf_usdt": 75,
+    "low_conf_usdt": 50,
+    "high_conf_atr_mult": 0.25,
+    "mid_conf_atr_mult": 0.5,
+    "low_conf_atr_mult": 1.0,
+    "max_add_count": 8,
+    "add_trigger_pct": -5.0,
+    "require_direction_match": false,
+    "progressive_triggers": [
+      -5,
+      -6,
+      -7,
+      -8,
+      -9,
+      -10,
+      -11,
+      -12
+    ]
+  },
+  "signal_weights": {
+    "_comment_active": "=== 已启用信号 ===",
+    "ma_trend": 0,
+    "rsi_extreme": 2,
+    "rsi_momentum": 0,
+    "macd": 1,
+    "kdj": 0,
+    "bollinger": 2,
+    "volume": 1,
+    "funding_rate": 1,
+    "_comment_reserved": "=== 预留信号（权重0=关闭，改>0即启用，无需改代码）===",
+    "cci": 0,
+    "obv": 0,
+    "vwap": 0,
+    "williams_r": 0,
+    "mfi": 0,
+    "adx_trend": 0
+  },
+  "signal_thresholds": {
+    "rsi_oversold": 30,
+    "rsi_overbought": 70,
+    "rsi_midline": 50,
+    "volume_ratio": 1.5,
+    "funding_rate_positive": 0.01,
+    "funding_rate_negative": -0.01,
+    "volatility_quantile": 0.7,
+    "keltner_width_low": 2.14,
+    "keltner_width_high": 2.85,
+    "signal_reverse_confidence": 70,
+    "sma200_filter_enable": true,
+    "_comment_reserved": "=== 预留指标阈值（配合预留信号使用）===",
+    "cci_overbought": 100,
+    "cci_oversold": -100,
+    "obv_divergence_lookback": 20,
+    "vwap_tolerance_pct": 0.3,
+    "williams_r_overbought": -20,
+    "williams_r_oversold": -80,
+    "mfi_overbought": 80,
+    "mfi_oversold": 20,
+    "adx_trend_threshold": 25,
+    "adx_strong_threshold": 50
+  },
+  "system": {
+    "max_positions": 20,
+    "kline_count": 200,
+    "drawdown_window_days": 7
+  },
+  "multi_cycle_check": {
+    "_comment": "多周期连续趋势校验配置，默认关闭，需要启用时将enable改为true即可，无需修改脚本",
+    "enable": false,
+    "main_cycle": {
+      "_comment": "主周期连续趋势校验：校验主周期连续N根K线趋势是否一致",
+      "enable": true,
+      "cycle": "1H",
+      "_comment_cycle": "主周期类型，可修改为：1H/2H/4H/1D等",
+      "continuous_periods": 3,
+      "_comment_continuous_periods": "连续多少根K线同趋势才算符合，可修改为：2/3/4/5等",
+      "trend_consistency_pct": 0.7,
+      "_comment_consistency": "趋势一致性比例，0.7=70%的K线同方向才算符合"
+    },
+    "sub_cycle": {
+      "_comment": "小周期连续趋势校验：主周期符合后，再校验小周期连续趋势",
+      "enable": false,
+      "cycle": "30m",
+      "_comment_cycle": "小周期类型，可修改为：30m/15m/5m/1m等",
+      "continuous_periods": 3,
+      "_comment_continuous_periods": "连续多少根小周期K线同趋势，可修改为：2/3/4等",
+      "min_change_pct": 0.1,
+      "_comment_min_change": "每根小周期K线最小涨跌幅要求，0.1=0.1%，过滤无效波动"
+    }
+  }
+}
