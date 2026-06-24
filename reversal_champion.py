@@ -148,12 +148,12 @@ for st, en, lb in PERIODS:
             if wl:
                 r=sim('l',i); trades.append(r)
                 if r['er']=='sl':
-                    r2=sim('s',i,is_rev=True); trades.append(r2); pos=r2
+                    r2=sim('s',r['ex'],is_rev=True); trades.append(r2); pos=r2
                 else: pos=r
             elif ws:
                 r=sim('s',i); trades.append(r)
                 if r['er']=='sl':
-                    r2=sim('l',i,is_rev=True); trades.append(r2); pos=r2
+                    r2=sim('l',r['ex'],is_rev=True); trades.append(r2); pos=r2
                 else: pos=r
     ttl=sum(p['pnl'] for p in trades)
     if trades:
