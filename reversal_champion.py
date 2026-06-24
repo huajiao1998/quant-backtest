@@ -20,7 +20,7 @@ CUSTOM_END   = '2026-06-22'
 CFG = json.load(open('scripts/backtest/reversal_config.json'))
 ST = CFG['signal_thresholds']; SW = CFG['signal_weights']
 
-LA = 500; INIT = 3; ADD_SZ = 3; MAX_ADD = 1; LEV = 5; CM = 0.1; MH = 500; MP = 1
+LA = 500; SIG_INIT = 1; REV_INIT = 6; ADD_SZ = 3; MAX_ADD = 1; LEV = 5; CM = 0.1; MH = 500; MP = 1
 SL_N = -8.0; SL_AFTER_TP1 = -8.0; SL_TIGHT = -8.0
 TP1_N = 6.0; TP2_N = 6.0; TP1_W = 6.0; TP2_W = 6.0
 ADD_T = [1.0]
@@ -83,7 +83,7 @@ for i in range(1,N):
     theta[i]=bb; psi[i]=ss
 
 def sim(sd, idx, is_rev=False):
-    ep=pr[idx]; ct=INIT; ec=ep; tot=0.0
+    ep=pr[idx]; ct=REV_INIT if is_rev else SIG_INIT; ec=ep; tot=0.0
     t1t=False; ac=0; er='timeout'; exp=None
     tight=False
     _can_add = is_rev or not ADD_ONLY_REVERSAL  # 反手仓可加仓，或关闭限制
