@@ -15,6 +15,7 @@ DATA_SOURCE = 'trading'  # 'trading' 或 'backtest_data'
 # 自定义时间范围
 CUSTOM_START = '2026-03-29'
 CUSTOM_END   = '2026-06-22'
+TIMEFRAME = '4H'  # '1H' 或 '4H'
 # ═══════════════════════════════════════════════════════════
 
 CFG = json.load(open('scripts/backtest/reversal_config.json'))
@@ -45,17 +46,22 @@ else:
 
 for c in 'open,high,low,close,vol'.split(','): d[c]=pd.to_numeric(d[c])
 d['cp']=d['close']; d['hp']=d['high']; d['lp']=d['low']
-d['ma']=d['close'].rolling(10).mean()
-d['e20']=d['close'].ewm(span=20).mean(); d['e50']=d['close'].ewm(span=50).mean()
-e12=d['close'].ewm(span=12).mean(); e26=d['close'].ewm(span=26).mean()
-d['macd']=e12-e26; d['ms']=d['macd'].ewm(span=9).mean()
+if TIMEFRAME == '4H':
+    mul = 4
+    print(f"📊 使用{TIMEFRAME}级别信号（周期×{mul}）")
+else:
+    mul = 4
+d['ma']=d['close'].rolling(20*mul).mean()
+d['e20']=d['close'].ewm(span=20*mul).mean(); d['e50']=d['close'].ewm(span=50*mul).mean()
+e12=d['close'].ewm(span=12*mul).mean(); e26=d['close'].ewm(span=26*mul).mean()
+d['macd']=e12-e26; d['ms']=d['macd'].ewm(span=9*mul).mean()
 dl=d['close'].diff(); g=dl.clip(lower=0); l_dn=-dl.clip(upper=0)
 d['rsi']=100-(100/(1+g.ewm(span=14).mean()/l_dn.ewm(span=14).mean().replace(0,np.nan)))
-bm=d['close'].rolling(20).mean(); bs_=d['close'].rolling(20).std()
+bm=d['close'].rolling(20*mul).mean(); bs_=d['close'].rolling(20*mul).std()
 d['bu']=bm+2*bs_; d['bl']=bm-2*bs_
 d['tr']=np.maximum(d['hp']-d['lp'],np.maximum(abs(d['hp']-d['cp'].shift(1)),abs(d['lp']-d['cp'].shift(1))))
-d['atr']=d['tr'].ewm(span=14).mean(); d['atr_ma']=d['atr'].rolling(50).mean()
-df=d.iloc[70:].reset_index(drop=True); N=len(df)
+d['atr']=d['tr'].ewm(span=14*mul).mean(); d['atr_ma']=d['atr'].rolling(50*mul).mean()
+df=d.iloc[70*mul:].reset_index(drop=True); N=len(df)
 pr=df['cp'].values; ma=df['ma'].values; ts_arr=df['ts'].values
 rsi=df['rsi'].values; atr=df['atr'].values; atr_ma=df['atr_ma'].values
 crash=(rsi<30)&(atr>atr_ma*1.5)&(pr<ma); boom=(rsi>70)&(atr>atr_ma*1.5)&(pr>ma)
@@ -143,8 +149,8 @@ for st, en, lb in PERIODS:
         if np.isnan(ma[i]) or ma[i]<=0: continue
         if pos and i>=pos['ex']: pos=None
         if pos is None:
-            wl=(theta[i]>psi[i]) and (pr[i]>ma[i]*1.000)
-            ws=(psi[i]>theta[i]) and (pr[i]<ma[i]*1.000)
+            wl=(theta[i]>psi[i]) and (pr[i]>ma[i]*1.008)
+            ws=(psi[i]>theta[i]) and (pr[i]<ma[i]*0.992)
             if wl:
                 r=sim('l',i); trades.append(r)
                 if r['er']=='sl':
