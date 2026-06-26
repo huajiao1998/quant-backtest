@@ -18,7 +18,7 @@ SW = {'ma_trend':3,'macd':1,'rsi_extreme':1,'bollinger':1}
 
 LEV=5; CM=0.1; MAKER_FEE=0.0002; TAKER_FEE=0.0005
 SIG_SL=-7; SIG_TP=5; SIG_SZ=1
-FLIP_SL=-8; FLIP_TP=8; FLIP_SZ=6; FLIP_ADD=6
+FLIP_SL=-8; FLIP_TP=8; FLIP_SZ=6; FLIP_ADD=0
 
 # ─── 数据加载 ───
 if DATA_SOURCE=='trading':
@@ -124,7 +124,7 @@ def run():
                 found=False
                 for ap in alive:
                     if ap.dir==fd:
-                        add_sz=FLIP_ADD if not pos.flipped else FLIP_SZ
+                        add_sz=FLIP_SZ  # 给对仓加6张
                         ap.add(add_sz,cp)
                         trades.append({'pos_id':ap.pos_id,'dir':ap.dir,'sz':add_sz,
                             'entry_i':i,'exit_i':i,'entry_p':cp,'exit_p':cp,
@@ -145,7 +145,7 @@ def run():
         
         # 阶段2：翻转新开
         for fd,cp_,ff in flips:
-            sz=FLIP_SZ+(0 if ff else FLIP_ADD)
+            sz=FLIP_SZ  # 统一开6张
             np_=Position(fd,sz,i,cp_,FLIP_SL,FLIP_TP,flipped=True)
             np_.fee_paid+=abs(np_.pnl(cp_))*TAKER_FEE
             alive.append(np_)
@@ -180,8 +180,8 @@ def run():
 
 print('=== 对冲翻转策略 v4（带仓位管理）===')
 print(f'信号: 多空各{SIG_SZ}张 SL={SIG_SL}% TP={SIG_TP}%')
-print(f'翻转: signalSL→开{FLIP_SZ+FLIP_ADD}张, flipSL→开{FLIP_SZ}张 | SL={FLIP_SL}% TP={FLIP_TP}%')
-print(f'手续费: Taker {TAKER_FEE*100:.2f}% | 数据源: trading.db\n')
+print(f'翻转: 开{FLIP_SZ}张 | SL={FLIP_SL}% TP={FLIP_TP}%')
+print(f'手续费: Taker {TAKER_FEE*100:.2f}% | 数据源: backtest_data.db\n')
 
 trades=run()
 rd=pd.DataFrame(trades)
