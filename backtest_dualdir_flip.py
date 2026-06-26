@@ -126,7 +126,7 @@ for st,en,lb in PERIODS:
                 found=False
                 for ap in alive:
                     if ap.dir==fd:
-                        ap.sz+=FLIP_SZ;found=True;break
+                        ap.sz+=FLIP_SZ;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.flipped=True;found=True;break
                 if not found:new_flips.append(fd)
             elif c>=pos.tp:
                 pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE
@@ -136,6 +136,7 @@ for st,en,lb in PERIODS:
         for fd in new_flips:
             alive.append(Position(fd,FLIP_SZ,i,cp,FLIP_SL,FLIP_TP,flipped=True))
         
+        # 自然形成对冲（有空开多/有多开空）
         bb=theta[i];ss=psi[i]
         if bearish_div[i]==1:ss=0
         if bullish_div[i]==1:bb=0
