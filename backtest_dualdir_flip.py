@@ -126,7 +126,9 @@ for st,en,lb in PERIODS:
                 found=False
                 for ap in alive:
                     if ap.dir==fd:
-                        ap.sz+=FLIP_SZ;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.flipped=True;found=True;break
+                        _new_sz=ap.sz+FLIP_SZ
+                        ap.entry_p=(ap.entry_p*ap.sz+cp*FLIP_SZ)/_new_sz
+                        ap.sz=_new_sz;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.flipped=True;found=True;break
                 if not found:new_flips.append(fd)
             elif c>=pos.tp:
                 pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE
