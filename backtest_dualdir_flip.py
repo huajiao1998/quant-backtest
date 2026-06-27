@@ -12,7 +12,7 @@ CFG=json.load(open('strategy_config.json'))
 SW={'ma_trend':3,'macd':1,'rsi_extreme':1,'bollinger':1}
 LEV=5;CM=0.1;TAKER_FEE=0.0005
 SIG_SL=-7;SIG_TP=5;FLIP_SL=-8;FLIP_TP=8
-SIG_PCT=5;FLIP_PCT=25;INITIAL_CAPITAL=5000
+SIG_PCT=1;FLIP_PCT=6;INITIAL_CAPITAL=5000
 
 if DATA_SOURCE=='trading':
     conn=sqlite3.connect(TD)
@@ -151,6 +151,12 @@ for st,en,lb in PERIODS:
         bb=theta[i];ss=psi[i]
         if bearish_div[i]==1:ss=0
         if bullish_div[i]==1:bb=0
+        # MA趋势过滤（SMA40，0.8%缓冲）
+        if cp > ma[i] * 1.008:
+            if ss > bb: ss = 0  # 价格在均线上方，禁止做空
+        elif cp < ma[i] * 0.992:
+            if bb > ss: bb = 0  # 价格在均线下方，禁止做多
+        
         hl=any(p.dir=='l' for p in alive);hs=any(p.dir=='s' for p in alive)
         
         if bb>ss and not hl:
