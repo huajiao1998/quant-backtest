@@ -11,7 +11,8 @@ TD='data/SQLite/trading.db'
 CFG=json.load(open('strategy_config.json'))
 SW={'ma_trend':3,'macd':1,'rsi_extreme':1,'bollinger':1}
 LEV=5;CM=0.1;TAKER_FEE=0.0005
-SIG_SL=-7;SIG_TP=5;SIG_SZ=1;FLIP_SL=-8;FLIP_TP=8;FLIP_SZ=6
+SIG_SL=-7;SIG_TP=5;FLIP_SL=-8;FLIP_TP=8
+SIG_PCT=5;FLIP_PCT=25;INITIAL_CAPITAL=5000
 
 if DATA_SOURCE=='trading':
     conn=sqlite3.connect(TD)
@@ -111,16 +112,19 @@ for st,en,lb in PERIODS:
     idx=[i for i in range(N) if tss<=ts_arr[i]<tse]
     if len(idx)<10:continue
     
-    trades=[];positions=[]
+    trades=[];positions=[];equity=INITIAL_CAPITAL
     for i in idx:
         if i>=N-2:break
         if np.isnan(ma[i]) or ma[i]<=0:continue
         cp=pr[i];new_flips=[]
+        # 按当前权益动态计算开仓张数
+        sig_sz=max(1,int(equity*SIG_PCT/100*LEV/(cp*CM)))
+        flip_sz=max(1,int(equity*FLIP_PCT/100*LEV/(cp*CM)))
         alive=[]
         for pos in positions:
             c=pos.cur(cp)
             if c<=pos.sl:
-                pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE
+                pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE;equity+=pnl-abs(pnl)*TAKER_FEE
                 trades.append({'pnl':round(pnl-pos.fee_paid,2),'dir':pos.dir,'er':'sl','tag':'flip' if pos.flipped else 'sig'})
                 fd='s' if pos.dir=='l' else 'l'
                 found=False
@@ -129,19 +133,19 @@ for st,en,lb in PERIODS:
                         if ap.flipped and ap.add_count>=1:
                             found=False
                         else:
-                            _new_sz=ap.sz+FLIP_SZ
-                            ap.entry_p=(ap.entry_p*ap.sz+cp*FLIP_SZ)/_new_sz
+                            _new_sz=ap.sz+flip_sz
+                            ap.entry_p=(ap.entry_p*ap.sz+cp*flip_sz)/_new_sz
                             ap.sz=_new_sz;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.add_count+=1
                             ap.flipped=True;found=True
                         break
                 if not found:new_flips.append(fd)
             elif c>=pos.tp:
-                pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE
+                pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE;equity+=pnl-abs(pnl)*TAKER_FEE
                 trades.append({'pnl':round(pnl-pos.fee_paid,2),'dir':pos.dir,'er':'tp','tag':'flip' if pos.flipped else 'sig'})
             else:
                 alive.append(pos)
         for fd in new_flips:
-            alive.append(Position(fd,FLIP_SZ,i,cp,FLIP_SL,FLIP_TP,flipped=True))
+            alive.append(Position(fd,flip_sz,i,cp,FLIP_SL,FLIP_TP,flipped=True))
         
         # 自然形成对冲（有空开多/有多开空）
         bb=theta[i];ss=psi[i]
@@ -152,12 +156,12 @@ for st,en,lb in PERIODS:
         if bb>ss and not hl:
             conf=int(bb/(bb+ss)*100)
             if conf>=50:
-                p=Position('l',SIG_SZ,i,cp,SIG_SL,SIG_TP)
+                p=Position('l',sig_sz,i,cp,SIG_SL,SIG_TP)
                 p.fee_paid+=abs(p.pnl(cp))*TAKER_FEE;alive.append(p)
         if ss>bb and not hs:
             conf=int(ss/(bb+ss)*100)
             if conf>=50:
-                p=Position('s',SIG_SZ,i,cp,SIG_SL,SIG_TP)
+                p=Position('s',sig_sz,i,cp,SIG_SL,SIG_TP)
                 p.fee_paid+=abs(p.pnl(cp))*TAKER_FEE;alive.append(p)
         
         positions=alive
@@ -173,6 +177,6 @@ for st,en,lb in PERIODS:
     
     print(f'【{lb}】{DATA_SOURCE}')
     print(f'  信号: {len(sig_trades)}笔 {sig_trades["pnl"].sum():>+8.0f}  翻转: {len(flip_trades)}笔 {flip_trades["pnl"].sum():>+8.0f}')
-    print(f'  合计{len(rd):>4}笔 胜率{wr:.0f}% 总盈亏{ttl:>+8.0f}  TP{tp_cnt} SL{sl_cnt}\n')
+    print(f'  合计{len(rd):>4}笔 胜率{wr:.0f}% 总盈亏{ttl:>+8.0f} 权益{equity:.0f}U  TP{tp_cnt} SL{sl_cnt}\n')
 
 print('=== 完成 ===')
