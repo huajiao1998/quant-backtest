@@ -16,10 +16,18 @@ SIG_PCT=1;FLIP_PCT=6;INITIAL_CAPITAL=5000
 
 if DATA_SOURCE=='trading':
     conn=sqlite3.connect(TD)
-    d=pd.read_sql("SELECT timestamp,close_price,high_price,low_price FROM indicators_snapshot ORDER BY id",conn);conn.close()
-    d['ts']=d['timestamp'].apply(lambda t:int(pd.Timestamp(t).timestamp()*1000))
-    d.rename(columns={'close_price':'close','high_price':'high','low_price':'low'},inplace=True)
-    d['open']=d['close'];d['vol']=1.0
+    try:
+        d=pd.read_sql("SELECT timestamp,close_price,open_price,high_price,low_price,volume FROM indicators_snapshot ORDER BY id",conn);conn.close()
+    except:  # 旧数据没有open_price/volume列
+        conn.close();conn=sqlite3.connect(TD)
+        d=pd.read_sql("SELECT timestamp,close_price,high_price,low_price FROM indicators_snapshot ORDER BY id",conn);conn.close()
+        d['open']=d['close'];d['vol']=1.0
+        d['ts']=d['timestamp'].apply(lambda t:int(pd.Timestamp(t).timestamp()*1000))
+        d.rename(columns={'close_price':'close','high_price':'high','low_price':'low'},inplace=True)
+    else:
+        d['ts']=d['timestamp'].apply(lambda t:int(pd.Timestamp(t).timestamp()*1000))
+        d.rename(columns={'close_price':'close','open_price':'open','high_price':'high','low_price':'low','volume':'vol'},inplace=True)
+        d['open']=d['open'].fillna(d['close']);d['vol']=d['vol'].fillna(1.0)
 else:
     conn=sqlite3.connect(BDB)
     d=pd.read_sql('SELECT * FROM ohlcv_1h ORDER BY ts',conn);conn.close()
@@ -34,6 +42,11 @@ dl=d['close'].diff();g=dl.clip(lower=0);l_dn=-dl.clip(upper=0)
 d['rsi']=100-(100/(1+g.ewm(span=14).mean()/l_dn.ewm(span=14).mean().replace(0,np.nan)))
 bm=d['close'].rolling(40).mean();bs_=d['close'].rolling(40).std()
 d['bu']=bm+2*bs_;d['bl']=bm-2*bs_
+# ATR14
+d['tr']=np.maximum(d['high']-d['low'],np.maximum(abs(d['high']-d['close'].shift(1)),abs(d['low']-d['close'].shift(1))))
+d['atr14']=d['tr'].rolling(14).mean()
+# 成交量均线
+d['vol_sma']=d['vol'].rolling(20).mean()
 df=d.iloc[70:].reset_index(drop=True);N=len(df)
 pr=df['cp'].values;ma=df['ma'].values;ts_arr=df['ts'].values
 
@@ -57,6 +70,23 @@ for i in range(1,N):
         if r>70:ss+=1
     if l['cp']>l['bu']:ss+=1
     if l['cp']<l['bl']:bb+=1
+    # ATR动量(权重0.5)
+    atr=l['atr14']
+    if not pd.isna(atr):
+        if l['cp']>p['cp']+atr:bb+=0.5
+        elif l['cp']<p['cp']-atr:ss+=0.5
+    # 成交量确认(权重0.5)
+    vs=l['vol'];vsma=l['vol_sma']
+    if vs>0 and vsma>0 and vs>vsma*1.5:
+        if l['cp']>l['open']:bb+=0.5
+        elif l['cp']<l['open']:ss+=0.5
+    # K线实体动量(权重0.5)
+    _rn=l['high']-l['low']
+    if _rn>0:
+        _bd=abs(l['cp']-l['open'])/_rn
+        if _bd>0.7:
+            if l['cp']>l['open']:bb+=0.5
+            elif l['cp']<l['open']:ss+=0.5
     theta[i]=bb;psi[i]=ss
 
 W=9;hp_arr=df['hp'].values;lp_arr=df['lp'].values;mh_arr=df['mh'].values
