@@ -74,11 +74,11 @@ for i in range(W*2,N):
         if mh_s2<mh_s1 and mh_arr[si]<mh_s1:bearish_div[i]=1
 
 class Position:
-    __slots__=('pos_id','dir','sz','entry_p','entry_i','sl','tp','flipped','fee_paid')
+    __slots__=('pos_id','dir','sz','entry_p','entry_i','sl','tp','flipped','fee_paid','add_count')
     def __init__(self,dir_,sz,i,p,sl,tp,flipped=False):
         self.pos_id=uuid.uuid4().hex[:12];self.dir=dir_;self.sz=sz
         self.entry_p=p;self.entry_i=i;self.sl=sl;self.tp=tp
-        self.flipped=flipped;self.fee_paid=0.0
+        self.flipped=flipped;self.fee_paid=0.0;self.add_count=0
     def cur(self,cp):
         return (cp-self.entry_p)/self.entry_p*LEV*100 if self.dir=='l' else (self.entry_p-cp)/self.entry_p*LEV*100
     def pnl(self,cp):
@@ -126,9 +126,14 @@ for st,en,lb in PERIODS:
                 found=False
                 for ap in alive:
                     if ap.dir==fd:
-                        _new_sz=ap.sz+FLIP_SZ
-                        ap.entry_p=(ap.entry_p*ap.sz+cp*FLIP_SZ)/_new_sz
-                        ap.sz=_new_sz;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.flipped=True;found=True;break
+                        if ap.flipped and ap.add_count>=1:
+                            found=False
+                        else:
+                            _new_sz=ap.sz+FLIP_SZ
+                            ap.entry_p=(ap.entry_p*ap.sz+cp*FLIP_SZ)/_new_sz
+                            ap.sz=_new_sz;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.add_count+=1
+                            ap.flipped=True;found=True
+                        break
                 if not found:new_flips.append(fd)
             elif c>=pos.tp:
                 pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE
