@@ -17,10 +17,10 @@ SIG_PCT=1;FLIP_PCT=6;INITIAL_CAPITAL=5000
 if DATA_SOURCE=='trading':
     conn=sqlite3.connect(TD)
     try:
-        d=pd.read_sql("SELECT timestamp,close_price,open_price,high_price,low_price,volume FROM indicators_snapshot ORDER BY id",conn);conn.close()
-    except:  # 旧数据没有open_price/volume列
+        d=pd.read_sql("SELECT timestamp,close_price,open_price,high_price,low_price,volume,volume_ratio FROM indicators_snapshot ORDER BY id",conn);conn.close()
+    except:  # 旧数据没有open_price/volume/volume_ratio列
         conn.close();conn=sqlite3.connect(TD)
-        d=pd.read_sql("SELECT timestamp,close_price,high_price,low_price FROM indicators_snapshot ORDER BY id",conn);conn.close()
+        d=pd.read_sql("SELECT timestamp,close_price,high_price,low_price,volume_ratio FROM indicators_snapshot ORDER BY id",conn);conn.close()
         d['open']=d['close'];d['vol']=1.0
         d['ts']=d['timestamp'].apply(lambda t:int(pd.Timestamp(t).timestamp()*1000))
         d.rename(columns={'close_price':'close','high_price':'high','low_price':'low'},inplace=True)
@@ -70,23 +70,8 @@ for i in range(1,N):
         if r>70:ss+=1
     if l['cp']>l['bu']:ss+=1
     if l['cp']<l['bl']:bb+=1
-    # ATR动量(权重0.5)
-    atr=l['atr14']
-    if not pd.isna(atr):
-        if l['cp']>p['cp']+atr:bb+=0.5
-        elif l['cp']<p['cp']-atr:ss+=0.5
-    # 成交量确认(权重0.5)
-    vs=l['vol'];vsma=l['vol_sma']
-    if vs>0 and vsma>0 and vs>vsma*1.5:
-        if l['cp']>l['open']:bb+=0.5
-        elif l['cp']<l['open']:ss+=0.5
-    # K线实体动量(权重0.5)
-    _rn=l['high']-l['low']
-    if _rn>0:
-        _bd=abs(l['cp']-l['open'])/_rn
-        if _bd>0.7:
-            if l['cp']>l['open']:bb+=0.5
-            elif l['cp']<l['open']:ss+=0.5
+    if l['cp']>l['bu']:ss+=1
+    if l['cp']<l['bl']:bb+=1
     theta[i]=bb;psi[i]=ss
 
 W=9;hp_arr=df['hp'].values;lp_arr=df['lp'].values;mh_arr=df['mh'].values
