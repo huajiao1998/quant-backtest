@@ -181,6 +181,13 @@ for st,en,lb in PERIODS:
         bb=theta[i];ss=psi[i]
         if bearish_div[i]==1:ss=0
         if bullish_div[i]==1:bb=0
+        # 趋势过滤：价格在SMA40下方不做多，在上方不做空
+        sma40=df['sma40'].iloc[i] if 'sma40' in df.columns else None
+        if sma40 is not None and not np.isnan(sma40):
+            if l['cp']<sma40 and bb>0:
+                bb=0  # 价格在均线下方，禁止做多
+            if l['cp']>sma40 and ss>0:
+                ss=0  # 价格在均线上方，禁止做空
         
         hl=any(p.dir=='l' for p in alive);hs=any(p.dir=='s' for p in alive)
         
