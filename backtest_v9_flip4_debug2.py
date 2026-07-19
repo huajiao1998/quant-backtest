@@ -13,6 +13,8 @@ SW={'ma_trend':3,'macd':2,'rsi_extreme':1}
 LEV=5;CM=0.1;TAKER_FEE=0.0005
 SIG_SL=-7;SIG_TP=6;FLIP_SL=-8;FLIP_TP=8;FLIP_TRIGGER=-6
 SIG_SZ=1;FLIP_SZ=6;INITIAL_CAPITAL=5000
+debug_repeat=0
+debug_max_sz=0
 
 if DATA_SOURCE=='trading':
     conn=sqlite3.connect(TD)
@@ -185,6 +187,8 @@ for st,en,lb in PERIODS:
                 alive.append(pos)
         for fd in new_flips:
             alive.append(Position(fd,flip_sz,i,cp,FLIP_SL,FLIP_TP,flipped=True))
+            total_dir2 = sum(ap.sz for ap in alive if ap.dir==fd)
+            if total_dir2 > debug_max_sz: debug_max_sz = total_dir2
         
         # 自然形成对冲（有空开多/有多开空）
         bb=theta[i];ss=psi[i]
@@ -226,4 +230,4 @@ for st,en,lb in PERIODS:
     print(f'  信号: {len(sig_trades)}笔 {sig_trades["pnl"].sum():>+8.0f}  翻转: {len(flip_trades)}笔 {flip_trades["pnl"].sum():>+8.0f}')
     print(f'  合计{len(rd):>4}笔 胜率{wr:.0f}% 总盈亏{ttl:>+8.0f} 权益{equity:.0f}U  TP{tp_cnt} SL{sl_cnt}\n')
 
-print('=== 完成 ===')
+print("最大同向仓位(张):", debug_max_sz)

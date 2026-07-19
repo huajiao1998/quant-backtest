@@ -13,6 +13,7 @@ SW={'ma_trend':3,'macd':2,'rsi_extreme':1}
 LEV=5;CM=0.1;TAKER_FEE=0.0005
 SIG_SL=-7;SIG_TP=6;FLIP_SL=-8;FLIP_TP=8;FLIP_TRIGGER=-6
 SIG_SZ=1;FLIP_SZ=6;INITIAL_CAPITAL=5000
+debug_repeat=0
 
 if DATA_SOURCE=='trading':
     conn=sqlite3.connect(TD)
@@ -169,7 +170,9 @@ for st,en,lb in PERIODS:
                             ap.sz=_new_sz;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.add_count+=1
                             ap.flipped=True;found=True
                         break
-                if not found:new_flips.append(fd)
+                if not found:
+                    debug_repeat+=1
+                    new_flips.append(fd)
             elif c>=pos.tp:
                 pnl=pos.pnl(cp);pos.fee_paid+=abs(pnl)*TAKER_FEE;equity+=pnl-abs(pnl)*TAKER_FEE
                 trades.append({'pnl':round(pnl-pos.fee_paid,2),'dir':pos.dir,'er':'tp','tag':'flip' if pos.flipped else 'sig'})
@@ -226,4 +229,4 @@ for st,en,lb in PERIODS:
     print(f'  信号: {len(sig_trades)}笔 {sig_trades["pnl"].sum():>+8.0f}  翻转: {len(flip_trades)}笔 {flip_trades["pnl"].sum():>+8.0f}')
     print(f'  合计{len(rd):>4}笔 胜率{wr:.0f}% 总盈亏{ttl:>+8.0f} 权益{equity:.0f}U  TP{tp_cnt} SL{sl_cnt}\n')
 
-print('=== 完成 ===')
+print("重复开同向翻转仓次数:", debug_repeat)

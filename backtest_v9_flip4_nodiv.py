@@ -162,7 +162,7 @@ for st,en,lb in PERIODS:
                 for ap in alive:
                     if ap.dir==fd:
                         if ap.flipped and ap.add_count>=1:
-                            found=True  # 同方向已有翻转仓且已达最大加仓次数，不再新开
+                            found=False
                         else:
                             _new_sz=ap.sz+flip_sz
                             ap.entry_p=(ap.entry_p*ap.sz+cp*flip_sz)/_new_sz
@@ -188,8 +188,10 @@ for st,en,lb in PERIODS:
         
         # 自然形成对冲（有空开多/有多开空）
         bb=theta[i];ss=psi[i]
-        if bearish_div[i]==1:ss=0
-        if bullish_div[i]==1:bb=0
+        # if bearish_div[i]==1:ss=0
+    # 顶背离注释掉
+        # if bullish_div[i]==1:bb=0
+    # 底背离注释掉
         # 趋势过滤：价格在SMA40下方不做多，在上方不做空
         sma40=df['sma40'].iloc[i] if 'sma40' in df.columns else None
         if sma40 is not None and not np.isnan(sma40):

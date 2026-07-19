@@ -11,7 +11,7 @@ TD='data/SQLite/trading.db'
 CFG=json.load(open('strategy_config.json'))
 SW={'ma_trend':3,'macd':2,'rsi_extreme':1}
 LEV=5;CM=0.1;TAKER_FEE=0.0005
-SIG_SL=-7;SIG_TP=6;FLIP_SL=-8;FLIP_TP=8;FLIP_TRIGGER=-6
+SIG_SL=-7;SIG_TP=6;FLIP_SL=-8;FLIP_TP=8;FLIP_TRIGGER=-5
 SIG_SZ=1;FLIP_SZ=6;INITIAL_CAPITAL=5000
 
 if DATA_SOURCE=='trading':
@@ -69,15 +69,6 @@ for i in range(1,N):
     if not pd.isna(r):
         if r<30:bb+=SW['rsi_extreme']
         if r>70:ss+=SW['rsi_extreme']
-    # SMA排列+ADX趋势判断（仿实盘）
-    if 'sma5' in df.columns and 'sma20' in df.columns and 'sma50' in df.columns and 'adx14' in df.columns:
-        _sma5=l.get('sma5',np.nan);_sma20=l.get('sma20',np.nan);_sma50=l.get('sma50',np.nan)
-        _adx=l.get('adx14',np.nan)
-        if not any(np.isnan(x) for x in [_sma5,_sma20,_sma50,_adx]):
-            _bullish = _sma5>_sma20>_sma50 and l['cp']>_sma5 and _adx>20
-            _bearish = _sma5<_sma20<_sma50 and l['cp']<_sma5 and _adx>20
-            if _bullish:bb+=SW.get('ma_trend', 3)
-            if _bearish:ss+=SW.get('ma_trend', 3)
     if l['cp']>l['bu']:ss+=SW.get('bollinger', 0)
     if l['cp']<l['bl']:bb+=SW.get('bollinger', 0)
     vr=l.get('volume_ratio',0) if isinstance(l, dict) else (df['volume_ratio'].iloc[i] if 'volume_ratio' in df.columns else 0)
@@ -136,7 +127,7 @@ else:
         ('2025-01-01','2026-06-13','全周期'),
     ]
 
-print(f'=== 对冲翻转v9-flip4（翻转仓-6%开对仓，有对仓不开）===\n')
+print(f'=== 对冲翻转v9-flip5（翻转仓-5%开对仓）===\n')
 
 for st,en,lb in PERIODS:
     tss=int(pd.Timestamp(st).timestamp()*1000)
@@ -162,7 +153,7 @@ for st,en,lb in PERIODS:
                 for ap in alive:
                     if ap.dir==fd:
                         if ap.flipped and ap.add_count>=1:
-                            found=True  # 同方向已有翻转仓且已达最大加仓次数，不再新开
+                            found=False
                         else:
                             _new_sz=ap.sz+flip_sz
                             ap.entry_p=(ap.entry_p*ap.sz+cp*flip_sz)/_new_sz
@@ -176,9 +167,18 @@ for st,en,lb in PERIODS:
             elif pos.flipped and not pos.flip_triggered and c<=FLIP_TRIGGER:
                 pos.flip_triggered=True
                 fd='s' if pos.dir=='l' else 'l'
-                # 对仓不足6张才开，开满6张
-                opp_sz=sum(ap.sz for ap in alive if ap.dir==fd)
-                if opp_sz<flip_sz:
+                found=False
+                for ap in alive:
+                    if ap.dir==fd:
+                        if ap.flipped and ap.add_count>=1:
+                            found=False
+                        else:
+                            _new_sz=ap.sz+flip_sz
+                            ap.entry_p=(ap.entry_p*ap.sz+cp*flip_sz)/_new_sz
+                            ap.sz=_new_sz;ap.sl=FLIP_SL;ap.tp=FLIP_TP;ap.add_count+=1
+                            ap.flipped=True;found=True
+                        break
+                if not found:
                     new_flips.append(fd)
                 alive.append(pos)
             else:
@@ -190,13 +190,6 @@ for st,en,lb in PERIODS:
         bb=theta[i];ss=psi[i]
         if bearish_div[i]==1:ss=0
         if bullish_div[i]==1:bb=0
-        # 趋势过滤：价格在SMA40下方不做多，在上方不做空
-        sma40=df['sma40'].iloc[i] if 'sma40' in df.columns else None
-        if sma40 is not None and not np.isnan(sma40):
-            if l['cp']<sma40 and bb>0:
-                bb=0  # 价格在均线下方，禁止做多
-            if l['cp']>sma40 and ss>0:
-                ss=0  # 价格在均线上方，禁止做空
         
         hl=any(p.dir=='l' for p in alive);hs=any(p.dir=='s' for p in alive)
         
